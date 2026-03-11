@@ -844,7 +844,32 @@ export function renderChat(props: ChatProps) {
       ${
         props.loading
           ? html`
-              <div class="muted">Loading chat...</div>
+              <div class="chat-loading-skeleton" aria-label="Loading chat">
+                <div class="chat-line assistant">
+                  <div class="chat-msg">
+                    <div class="chat-bubble">
+                      <div class="skeleton skeleton-line skeleton-line--long" style="margin-bottom: 8px"></div>
+                      <div class="skeleton skeleton-line skeleton-line--medium" style="margin-bottom: 8px"></div>
+                      <div class="skeleton skeleton-line skeleton-line--short"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="chat-line user" style="margin-top: 12px">
+                  <div class="chat-msg">
+                    <div class="chat-bubble">
+                      <div class="skeleton skeleton-line skeleton-line--medium"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="chat-line assistant" style="margin-top: 12px">
+                  <div class="chat-msg">
+                    <div class="chat-bubble">
+                      <div class="skeleton skeleton-line skeleton-line--long" style="margin-bottom: 8px"></div>
+                      <div class="skeleton skeleton-line skeleton-line--short"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             `
           : nothing
       }

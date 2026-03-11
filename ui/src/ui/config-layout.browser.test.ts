@@ -95,4 +95,38 @@ describe("config layout width", () => {
     expect(getComputedStyle(topTabs!).display).toBe("flex");
     expect(getComputedStyle(scroller!).display).toBe("flex");
   });
+
+  it("renders the appearance theme picker as styled cards instead of default buttons", () => {
+    const host = document.createElement("div");
+    host.style.width = "1200px";
+    document.body.append(host);
+
+    render(
+      renderConfig({
+        ...baseProps(),
+        schema: {
+          type: "object",
+          properties: {
+            ui: { type: "object", properties: {} },
+            wizard: { type: "object", properties: {} },
+          },
+        },
+        activeSection: "__appearance__",
+        includeVirtualSections: true,
+      }),
+      host,
+    );
+
+    const grid = host.querySelector<HTMLElement>(".settings-theme-grid");
+    const card = host.querySelector<HTMLElement>(".settings-theme-card");
+    const activeCard = host.querySelector<HTMLElement>(".settings-theme-card--active");
+
+    expect(grid).not.toBeNull();
+    expect(card).not.toBeNull();
+    expect(activeCard).not.toBeNull();
+    expect(getComputedStyle(grid!).display).toBe("grid");
+    expect(getComputedStyle(card!).display).toBe("grid");
+    expect(getComputedStyle(card!).borderRadius).not.toBe("0px");
+    expect(getComputedStyle(activeCard!).borderColor).not.toBe("buttonborder");
+  });
 });

@@ -85,22 +85,51 @@ import {
   resolveModelPrimary,
   sortLocaleStrings,
 } from "./views/agents-utils.ts";
-import { renderAgents } from "./views/agents.ts";
-import { renderChannels } from "./views/channels.ts";
 import { renderChat } from "./views/chat.ts";
 import { renderCommandPalette } from "./views/command-palette.ts";
 import { renderConfig } from "./views/config.ts";
-import { renderCron } from "./views/cron.ts";
-import { renderDebug } from "./views/debug.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
-import { renderInstances } from "./views/instances.ts";
 import { renderLoginGate } from "./views/login-gate.ts";
-import { renderLogs } from "./views/logs.ts";
-import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
-import { renderSessions } from "./views/sessions.ts";
-import { renderSkills } from "./views/skills.ts";
+
+// Lazy-loaded view modules – deferred so the initial bundle stays small.
+// Each loader resolves once; subsequent calls return the cached module.
+type LazyState<T> = { mod: T | null; promise: Promise<T> | null };
+
+let _pendingUpdate: (() => void) | undefined;
+
+function createLazy<T>(loader: () => Promise<T>): () => T | null {
+  const s: LazyState<T> = { mod: null, promise: null };
+  return () => {
+    if (s.mod) {
+      return s.mod;
+    }
+    if (!s.promise) {
+      s.promise = loader().then((m) => {
+        s.mod = m;
+        _pendingUpdate?.();
+        return m;
+      });
+    }
+    return null;
+  };
+}
+
+const lazyAgents = createLazy(() => import("./views/agents.ts"));
+const lazyChannels = createLazy(() => import("./views/channels.ts"));
+const lazyCron = createLazy(() => import("./views/cron.ts"));
+const lazyDebug = createLazy(() => import("./views/debug.ts"));
+const lazyInstances = createLazy(() => import("./views/instances.ts"));
+const lazyLogs = createLazy(() => import("./views/logs.ts"));
+const lazyNodes = createLazy(() => import("./views/nodes.ts"));
+const lazySessions = createLazy(() => import("./views/sessions.ts"));
+const lazySkills = createLazy(() => import("./views/skills.ts"));
+
+function lazyRender<M>(getter: () => M | null, render: (mod: M) => unknown) {
+  const mod = getter();
+  return mod ? render(mod) : nothing;
+}
 
 const UPDATE_BANNER_DISMISS_KEY = "openclaw:control-ui:update-banner-dismissed:v1";
 const CRON_THINKING_SUGGESTIONS = ["off", "minimal", "low", "medium", "high"];
@@ -283,6 +312,7 @@ export function renderApp(state: AppViewState) {
     typeof updatableState.requestUpdate === "function"
       ? () => updatableState.requestUpdate?.()
       : undefined;
+  _pendingUpdate = requestHostUpdate;
 
   // Gate: require successful gateway connection before showing the dashboard.
   // The gateway URL confirmation overlay is always rendered so URL-param flows still work.
@@ -640,102 +670,108 @@ export function renderApp(state: AppViewState) {
 
         ${
           state.tab === "channels"
-            ? renderChannels({
-                connected: state.connected,
-                loading: state.channelsLoading,
-                snapshot: state.channelsSnapshot,
-                lastError: state.channelsError,
-                lastSuccessAt: state.channelsLastSuccess,
-                whatsappMessage: state.whatsappLoginMessage,
-                whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
-                whatsappConnected: state.whatsappLoginConnected,
-                whatsappBusy: state.whatsappBusy,
-                configSchema: state.configSchema,
-                configSchemaLoading: state.configSchemaLoading,
-                configForm: state.configForm,
-                configUiHints: state.configUiHints,
-                configSaving: state.configSaving,
-                configFormDirty: state.configFormDirty,
-                nostrProfileFormState: state.nostrProfileFormState,
-                nostrProfileAccountId: state.nostrProfileAccountId,
-                onRefresh: (probe) => loadChannels(state, probe),
-                onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
-                onWhatsAppWait: () => state.handleWhatsAppWait(),
-                onWhatsAppLogout: () => state.handleWhatsAppLogout(),
-                onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
-                onConfigSave: () => state.handleChannelConfigSave(),
-                onConfigReload: () => state.handleChannelConfigReload(),
-                onNostrProfileEdit: (accountId, profile) =>
-                  state.handleNostrProfileEdit(accountId, profile),
-                onNostrProfileCancel: () => state.handleNostrProfileCancel(),
-                onNostrProfileFieldChange: (field, value) =>
-                  state.handleNostrProfileFieldChange(field, value),
-                onNostrProfileSave: () => state.handleNostrProfileSave(),
-                onNostrProfileImport: () => state.handleNostrProfileImport(),
-                onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
-              })
+            ? lazyRender(lazyChannels, (m) =>
+                m.renderChannels({
+                  connected: state.connected,
+                  loading: state.channelsLoading,
+                  snapshot: state.channelsSnapshot,
+                  lastError: state.channelsError,
+                  lastSuccessAt: state.channelsLastSuccess,
+                  whatsappMessage: state.whatsappLoginMessage,
+                  whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
+                  whatsappConnected: state.whatsappLoginConnected,
+                  whatsappBusy: state.whatsappBusy,
+                  configSchema: state.configSchema,
+                  configSchemaLoading: state.configSchemaLoading,
+                  configForm: state.configForm,
+                  configUiHints: state.configUiHints,
+                  configSaving: state.configSaving,
+                  configFormDirty: state.configFormDirty,
+                  nostrProfileFormState: state.nostrProfileFormState,
+                  nostrProfileAccountId: state.nostrProfileAccountId,
+                  onRefresh: (probe) => loadChannels(state, probe),
+                  onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
+                  onWhatsAppWait: () => state.handleWhatsAppWait(),
+                  onWhatsAppLogout: () => state.handleWhatsAppLogout(),
+                  onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
+                  onConfigSave: () => state.handleChannelConfigSave(),
+                  onConfigReload: () => state.handleChannelConfigReload(),
+                  onNostrProfileEdit: (accountId, profile) =>
+                    state.handleNostrProfileEdit(accountId, profile),
+                  onNostrProfileCancel: () => state.handleNostrProfileCancel(),
+                  onNostrProfileFieldChange: (field, value) =>
+                    state.handleNostrProfileFieldChange(field, value),
+                  onNostrProfileSave: () => state.handleNostrProfileSave(),
+                  onNostrProfileImport: () => state.handleNostrProfileImport(),
+                  onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
+                }),
+              )
             : nothing
         }
 
         ${
           state.tab === "instances"
-            ? renderInstances({
-                loading: state.presenceLoading,
-                entries: state.presenceEntries,
-                lastError: state.presenceError,
-                statusMessage: state.presenceStatus,
-                streamMode: state.streamMode,
-                onRefresh: () => loadPresence(state),
-              })
+            ? lazyRender(lazyInstances, (m) =>
+                m.renderInstances({
+                  loading: state.presenceLoading,
+                  entries: state.presenceEntries,
+                  lastError: state.presenceError,
+                  statusMessage: state.presenceStatus,
+                  streamMode: state.streamMode,
+                  onRefresh: () => loadPresence(state),
+                }),
+              )
             : nothing
         }
 
         ${
           state.tab === "sessions"
-            ? renderSessions({
-                loading: state.sessionsLoading,
-                result: state.sessionsResult,
-                error: state.sessionsError,
-                activeMinutes: state.sessionsFilterActive,
-                limit: state.sessionsFilterLimit,
-                includeGlobal: state.sessionsIncludeGlobal,
-                includeUnknown: state.sessionsIncludeUnknown,
-                basePath: state.basePath,
-                searchQuery: state.sessionsSearchQuery,
-                sortColumn: state.sessionsSortColumn,
-                sortDir: state.sessionsSortDir,
-                page: state.sessionsPage,
-                pageSize: state.sessionsPageSize,
-                actionsOpenKey: state.sessionsActionsOpenKey,
-                onFiltersChange: (next) => {
-                  state.sessionsFilterActive = next.activeMinutes;
-                  state.sessionsFilterLimit = next.limit;
-                  state.sessionsIncludeGlobal = next.includeGlobal;
-                  state.sessionsIncludeUnknown = next.includeUnknown;
-                },
-                onSearchChange: (q) => {
-                  state.sessionsSearchQuery = q;
-                  state.sessionsPage = 0;
-                },
-                onSortChange: (col, dir) => {
-                  state.sessionsSortColumn = col;
-                  state.sessionsSortDir = dir;
-                  state.sessionsPage = 0;
-                },
-                onPageChange: (p) => {
-                  state.sessionsPage = p;
-                },
-                onPageSizeChange: (s) => {
-                  state.sessionsPageSize = s;
-                  state.sessionsPage = 0;
-                },
-                onActionsOpenChange: (key) => {
-                  state.sessionsActionsOpenKey = key;
-                },
-                onRefresh: () => loadSessions(state),
-                onPatch: (key, patch) => patchSession(state, key, patch),
-                onDelete: (key) => deleteSessionAndRefresh(state, key),
-              })
+            ? lazyRender(lazySessions, (m) =>
+                m.renderSessions({
+                  loading: state.sessionsLoading,
+                  result: state.sessionsResult,
+                  error: state.sessionsError,
+                  activeMinutes: state.sessionsFilterActive,
+                  limit: state.sessionsFilterLimit,
+                  includeGlobal: state.sessionsIncludeGlobal,
+                  includeUnknown: state.sessionsIncludeUnknown,
+                  basePath: state.basePath,
+                  searchQuery: state.sessionsSearchQuery,
+                  sortColumn: state.sessionsSortColumn,
+                  sortDir: state.sessionsSortDir,
+                  page: state.sessionsPage,
+                  pageSize: state.sessionsPageSize,
+                  actionsOpenKey: state.sessionsActionsOpenKey,
+                  onFiltersChange: (next) => {
+                    state.sessionsFilterActive = next.activeMinutes;
+                    state.sessionsFilterLimit = next.limit;
+                    state.sessionsIncludeGlobal = next.includeGlobal;
+                    state.sessionsIncludeUnknown = next.includeUnknown;
+                  },
+                  onSearchChange: (q) => {
+                    state.sessionsSearchQuery = q;
+                    state.sessionsPage = 0;
+                  },
+                  onSortChange: (col, dir) => {
+                    state.sessionsSortColumn = col;
+                    state.sessionsSortDir = dir;
+                    state.sessionsPage = 0;
+                  },
+                  onPageChange: (p) => {
+                    state.sessionsPage = p;
+                  },
+                  onPageSizeChange: (s) => {
+                    state.sessionsPageSize = s;
+                    state.sessionsPage = 0;
+                  },
+                  onActionsOpenChange: (key) => {
+                    state.sessionsActionsOpenKey = key;
+                  },
+                  onRefresh: () => loadSessions(state),
+                  onPatch: (key, patch) => patchSession(state, key, patch),
+                  onDelete: (key) => deleteSessionAndRefresh(state, key),
+                }),
+              )
             : nothing
         }
 
@@ -743,535 +779,546 @@ export function renderApp(state: AppViewState) {
 
         ${
           state.tab === "cron"
-            ? renderCron({
-                basePath: state.basePath,
-                loading: state.cronLoading,
-                status: state.cronStatus,
-                jobs: visibleCronJobs,
-                jobsLoadingMore: state.cronJobsLoadingMore,
-                jobsTotal: state.cronJobsTotal,
-                jobsHasMore: state.cronJobsHasMore,
-                jobsQuery: state.cronJobsQuery,
-                jobsEnabledFilter: state.cronJobsEnabledFilter,
-                jobsScheduleKindFilter: state.cronJobsScheduleKindFilter,
-                jobsLastStatusFilter: state.cronJobsLastStatusFilter,
-                jobsSortBy: state.cronJobsSortBy,
-                jobsSortDir: state.cronJobsSortDir,
-                error: state.cronError,
-                busy: state.cronBusy,
-                form: state.cronForm,
-                editingJobId: state.cronEditingJobId,
-                channels: state.channelsSnapshot?.channelMeta?.length
-                  ? state.channelsSnapshot.channelMeta.map((entry) => entry.id)
-                  : (state.channelsSnapshot?.channelOrder ?? []),
-                channelLabels: state.channelsSnapshot?.channelLabels ?? {},
-                channelMeta: state.channelsSnapshot?.channelMeta ?? [],
-                runsJobId: state.cronRunsJobId,
-                runs: state.cronRuns,
-                runsTotal: state.cronRunsTotal,
-                runsHasMore: state.cronRunsHasMore,
-                runsLoadingMore: state.cronRunsLoadingMore,
-                runsScope: state.cronRunsScope,
-                runsStatuses: state.cronRunsStatuses,
-                runsDeliveryStatuses: state.cronRunsDeliveryStatuses,
-                runsStatusFilter: state.cronRunsStatusFilter,
-                runsQuery: state.cronRunsQuery,
-                runsSortDir: state.cronRunsSortDir,
-                fieldErrors: state.cronFieldErrors,
-                canSubmit: !hasCronFormErrors(state.cronFieldErrors),
-                agentSuggestions: cronAgentSuggestions,
-                modelSuggestions: cronModelSuggestions,
-                thinkingSuggestions: CRON_THINKING_SUGGESTIONS,
-                timezoneSuggestions: CRON_TIMEZONE_SUGGESTIONS,
-                deliveryToSuggestions,
-                accountSuggestions,
-                onFormChange: (patch) => {
-                  state.cronForm = normalizeCronFormState({ ...state.cronForm, ...patch });
-                  state.cronFieldErrors = validateCronForm(state.cronForm);
-                },
-                onRefresh: () => state.loadCron(),
-                onAdd: () => addCronJob(state),
-                onEdit: (job) => startCronEdit(state, job),
-                onClone: (job) => startCronClone(state, job),
-                onCancelEdit: () => cancelCronEdit(state),
-                onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
-                onRun: (job, mode) => runCronJob(state, job, mode ?? "force"),
-                onRemove: (job) => removeCronJob(state, job),
-                onLoadRuns: async (jobId) => {
-                  updateCronRunsFilter(state, { cronRunsScope: "job" });
-                  await loadCronRuns(state, jobId);
-                },
-                onLoadMoreJobs: () => loadMoreCronJobs(state),
-                onJobsFiltersChange: async (patch) => {
-                  updateCronJobsFilter(state, patch);
-                  const shouldReload =
-                    typeof patch.cronJobsQuery === "string" ||
-                    Boolean(patch.cronJobsEnabledFilter) ||
-                    Boolean(patch.cronJobsSortBy) ||
-                    Boolean(patch.cronJobsSortDir);
-                  if (shouldReload) {
+            ? lazyRender(lazyCron, (m) =>
+                m.renderCron({
+                  basePath: state.basePath,
+                  loading: state.cronLoading,
+                  status: state.cronStatus,
+                  jobs: visibleCronJobs,
+                  jobsLoadingMore: state.cronJobsLoadingMore,
+                  jobsTotal: state.cronJobsTotal,
+                  jobsHasMore: state.cronJobsHasMore,
+                  jobsQuery: state.cronJobsQuery,
+                  jobsEnabledFilter: state.cronJobsEnabledFilter,
+                  jobsScheduleKindFilter: state.cronJobsScheduleKindFilter,
+                  jobsLastStatusFilter: state.cronJobsLastStatusFilter,
+                  jobsSortBy: state.cronJobsSortBy,
+                  jobsSortDir: state.cronJobsSortDir,
+                  editingJobId: state.cronEditingJobId,
+                  error: state.cronError,
+                  busy: state.cronBusy,
+                  form: state.cronForm,
+                  channels: state.channelsSnapshot?.channelMeta?.length
+                    ? state.channelsSnapshot.channelMeta.map((entry) => entry.id)
+                    : (state.channelsSnapshot?.channelOrder ?? []),
+                  channelLabels: state.channelsSnapshot?.channelLabels ?? {},
+                  channelMeta: state.channelsSnapshot?.channelMeta ?? [],
+                  runsJobId: state.cronRunsJobId,
+                  runs: state.cronRuns,
+                  runsTotal: state.cronRunsTotal,
+                  runsHasMore: state.cronRunsHasMore,
+                  runsLoadingMore: state.cronRunsLoadingMore,
+                  runsScope: state.cronRunsScope,
+                  runsStatuses: state.cronRunsStatuses,
+                  runsDeliveryStatuses: state.cronRunsDeliveryStatuses,
+                  runsStatusFilter: state.cronRunsStatusFilter,
+                  runsQuery: state.cronRunsQuery,
+                  runsSortDir: state.cronRunsSortDir,
+                  fieldErrors: state.cronFieldErrors,
+                  canSubmit: !hasCronFormErrors(state.cronFieldErrors),
+                  agentSuggestions: cronAgentSuggestions,
+                  modelSuggestions: cronModelSuggestions,
+                  thinkingSuggestions: CRON_THINKING_SUGGESTIONS,
+                  timezoneSuggestions: CRON_TIMEZONE_SUGGESTIONS,
+                  deliveryToSuggestions,
+                  accountSuggestions,
+                  onFormChange: (patch) => {
+                    state.cronForm = normalizeCronFormState({ ...state.cronForm, ...patch });
+                    state.cronFieldErrors = validateCronForm(state.cronForm);
+                  },
+                  onRefresh: () => state.loadCron(),
+                  onAdd: () => addCronJob(state),
+                  onEdit: (job) => startCronEdit(state, job),
+                  onClone: (job) => startCronClone(state, job),
+                  onCancelEdit: () => cancelCronEdit(state),
+                  onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
+                  onRun: (job, mode) => runCronJob(state, job, mode ?? "force"),
+                  onRemove: (job) => removeCronJob(state, job),
+                  onLoadRuns: async (jobId) => {
+                    updateCronRunsFilter(state, { cronRunsScope: "job" });
+                    await loadCronRuns(state, jobId);
+                  },
+                  onLoadMoreJobs: () => loadMoreCronJobs(state),
+                  onJobsFiltersChange: async (patch) => {
+                    updateCronJobsFilter(state, patch);
+                    const shouldReload =
+                      typeof patch.cronJobsQuery === "string" ||
+                      Boolean(patch.cronJobsEnabledFilter) ||
+                      Boolean(patch.cronJobsSortBy) ||
+                      Boolean(patch.cronJobsSortDir);
+                    if (shouldReload) {
+                      await reloadCronJobs(state);
+                    }
+                  },
+                  onJobsFiltersReset: async () => {
+                    updateCronJobsFilter(state, {
+                      cronJobsQuery: "",
+                      cronJobsEnabledFilter: "all",
+                      cronJobsScheduleKindFilter: "all",
+                      cronJobsLastStatusFilter: "all",
+                      cronJobsSortBy: "nextRunAtMs",
+                      cronJobsSortDir: "asc",
+                    });
                     await reloadCronJobs(state);
-                  }
-                },
-                onJobsFiltersReset: async () => {
-                  updateCronJobsFilter(state, {
-                    cronJobsQuery: "",
-                    cronJobsEnabledFilter: "all",
-                    cronJobsScheduleKindFilter: "all",
-                    cronJobsLastStatusFilter: "all",
-                    cronJobsSortBy: "nextRunAtMs",
-                    cronJobsSortDir: "asc",
-                  });
-                  await reloadCronJobs(state);
-                },
-                onLoadMoreRuns: () => loadMoreCronRuns(state),
-                onRunsFiltersChange: async (patch) => {
-                  updateCronRunsFilter(state, patch);
-                  if (state.cronRunsScope === "all") {
-                    await loadCronRuns(state, null);
-                    return;
-                  }
-                  await loadCronRuns(state, state.cronRunsJobId);
-                },
-              })
+                  },
+                  onLoadMoreRuns: () => loadMoreCronRuns(state),
+                  onRunsFiltersChange: async (patch) => {
+                    updateCronRunsFilter(state, patch);
+                    if (state.cronRunsScope === "all") {
+                      await loadCronRuns(state, null);
+                      return;
+                    }
+                    await loadCronRuns(state, state.cronRunsJobId);
+                  },
+                }),
+              )
             : nothing
         }
 
         ${
           state.tab === "agents"
-            ? renderAgents({
-                basePath: state.basePath ?? "",
-                loading: state.agentsLoading,
-                error: state.agentsError,
-                agentsList: state.agentsList,
-                selectedAgentId: resolvedAgentId,
-                activePanel: state.agentsPanel,
-                config: {
-                  form: configValue,
-                  loading: state.configLoading,
-                  saving: state.configSaving,
-                  dirty: state.configFormDirty,
-                },
-                channels: {
-                  snapshot: state.channelsSnapshot,
-                  loading: state.channelsLoading,
-                  error: state.channelsError,
-                  lastSuccess: state.channelsLastSuccess,
-                },
-                cron: {
-                  status: state.cronStatus,
-                  jobs: state.cronJobs,
-                  loading: state.cronLoading,
-                  error: state.cronError,
-                },
-                agentFiles: {
-                  list: state.agentFilesList,
-                  loading: state.agentFilesLoading,
-                  error: state.agentFilesError,
-                  active: state.agentFileActive,
-                  contents: state.agentFileContents,
-                  drafts: state.agentFileDrafts,
-                  saving: state.agentFileSaving,
-                },
-                agentIdentityLoading: state.agentIdentityLoading,
-                agentIdentityError: state.agentIdentityError,
-                agentIdentityById: state.agentIdentityById,
-                agentSkills: {
-                  report: state.agentSkillsReport,
-                  loading: state.agentSkillsLoading,
-                  error: state.agentSkillsError,
-                  agentId: state.agentSkillsAgentId,
-                  filter: state.skillsFilter,
-                },
-                toolsCatalog: {
-                  loading: state.toolsCatalogLoading,
-                  error: state.toolsCatalogError,
-                  result: state.toolsCatalogResult,
-                },
-                onRefresh: async () => {
-                  await loadAgents(state);
-                  const agentIds = state.agentsList?.agents?.map((entry) => entry.id) ?? [];
-                  if (agentIds.length > 0) {
-                    void loadAgentIdentities(state, agentIds);
-                  }
-                  const refreshedAgentId =
-                    state.agentsSelectedId ??
-                    state.agentsList?.defaultId ??
-                    state.agentsList?.agents?.[0]?.id ??
-                    null;
-                  if (state.agentsPanel === "tools" && refreshedAgentId) {
-                    void loadToolsCatalog(state, refreshedAgentId);
-                  }
-                },
-                onSelectAgent: (agentId) => {
-                  if (state.agentsSelectedId === agentId) {
-                    return;
-                  }
-                  state.agentsSelectedId = agentId;
-                  state.agentFilesList = null;
-                  state.agentFilesError = null;
-                  state.agentFilesLoading = false;
-                  state.agentFileActive = null;
-                  state.agentFileContents = {};
-                  state.agentFileDrafts = {};
-                  state.agentSkillsReport = null;
-                  state.agentSkillsError = null;
-                  state.agentSkillsAgentId = null;
-                  state.toolsCatalogResult = null;
-                  state.toolsCatalogError = null;
-                  state.toolsCatalogLoading = false;
-                  void loadAgentIdentity(state, agentId);
-                  if (state.agentsPanel === "files") {
-                    void loadAgentFiles(state, agentId);
-                  }
-                  if (state.agentsPanel === "tools") {
-                    void loadToolsCatalog(state, agentId);
-                  }
-                  if (state.agentsPanel === "skills") {
-                    void loadAgentSkills(state, agentId);
-                  }
-                },
-                onSelectPanel: (panel) => {
-                  state.agentsPanel = panel;
-                  if (panel === "files" && resolvedAgentId) {
-                    if (state.agentFilesList?.agentId !== resolvedAgentId) {
-                      state.agentFilesList = null;
-                      state.agentFilesError = null;
-                      state.agentFileActive = null;
-                      state.agentFileContents = {};
-                      state.agentFileDrafts = {};
-                      void loadAgentFiles(state, resolvedAgentId);
+            ? lazyRender(lazyAgents, (m) =>
+                m.renderAgents({
+                  basePath: state.basePath ?? "",
+                  loading: state.agentsLoading,
+                  error: state.agentsError,
+                  agentsList: state.agentsList,
+                  selectedAgentId: resolvedAgentId,
+                  activePanel: state.agentsPanel,
+                  config: {
+                    form: configValue,
+                    loading: state.configLoading,
+                    saving: state.configSaving,
+                    dirty: state.configFormDirty,
+                  },
+                  channels: {
+                    snapshot: state.channelsSnapshot,
+                    loading: state.channelsLoading,
+                    error: state.channelsError,
+                    lastSuccess: state.channelsLastSuccess,
+                  },
+                  cron: {
+                    status: state.cronStatus,
+                    jobs: state.cronJobs,
+                    loading: state.cronLoading,
+                    error: state.cronError,
+                  },
+                  agentFiles: {
+                    list: state.agentFilesList,
+                    loading: state.agentFilesLoading,
+                    error: state.agentFilesError,
+                    active: state.agentFileActive,
+                    contents: state.agentFileContents,
+                    drafts: state.agentFileDrafts,
+                    saving: state.agentFileSaving,
+                  },
+                  agentIdentityLoading: state.agentIdentityLoading,
+                  agentIdentityError: state.agentIdentityError,
+                  agentIdentityById: state.agentIdentityById,
+                  agentSkills: {
+                    report: state.agentSkillsReport,
+                    loading: state.agentSkillsLoading,
+                    error: state.agentSkillsError,
+                    agentId: state.agentSkillsAgentId,
+                    filter: state.skillsFilter,
+                  },
+                  toolsCatalog: {
+                    loading: state.toolsCatalogLoading,
+                    error: state.toolsCatalogError,
+                    result: state.toolsCatalogResult,
+                  },
+                  onRefresh: async () => {
+                    await loadAgents(state);
+                    const agentIds = state.agentsList?.agents?.map((entry) => entry.id) ?? [];
+                    if (agentIds.length > 0) {
+                      void loadAgentIdentities(state, agentIds);
                     }
-                  }
-                  if (panel === "skills") {
+                    const refreshedAgentId =
+                      state.agentsSelectedId ??
+                      state.agentsList?.defaultId ??
+                      state.agentsList?.agents?.[0]?.id ??
+                      null;
+                    if (state.agentsPanel === "tools" && refreshedAgentId) {
+                      void loadToolsCatalog(state, refreshedAgentId);
+                    }
+                  },
+                  onSelectAgent: (agentId) => {
+                    if (state.agentsSelectedId === agentId) {
+                      return;
+                    }
+                    state.agentsSelectedId = agentId;
+                    state.agentFilesList = null;
+                    state.agentFilesError = null;
+                    state.agentFilesLoading = false;
+                    state.agentFileActive = null;
+                    state.agentFileContents = {};
+                    state.agentFileDrafts = {};
+                    state.agentSkillsReport = null;
+                    state.agentSkillsError = null;
+                    state.agentSkillsAgentId = null;
+                    state.toolsCatalogResult = null;
+                    state.toolsCatalogError = null;
+                    state.toolsCatalogLoading = false;
+                    void loadAgentIdentity(state, agentId);
+                    if (state.agentsPanel === "files") {
+                      void loadAgentFiles(state, agentId);
+                    }
+                    if (state.agentsPanel === "tools") {
+                      void loadToolsCatalog(state, agentId);
+                    }
+                    if (state.agentsPanel === "skills") {
+                      void loadAgentSkills(state, agentId);
+                    }
+                  },
+                  onSelectPanel: (panel) => {
+                    state.agentsPanel = panel;
+                    if (panel === "files" && resolvedAgentId) {
+                      if (state.agentFilesList?.agentId !== resolvedAgentId) {
+                        state.agentFilesList = null;
+                        state.agentFilesError = null;
+                        state.agentFileActive = null;
+                        state.agentFileContents = {};
+                        state.agentFileDrafts = {};
+                        void loadAgentFiles(state, resolvedAgentId);
+                      }
+                    }
+                    if (panel === "skills") {
+                      if (resolvedAgentId) {
+                        void loadAgentSkills(state, resolvedAgentId);
+                      }
+                    }
+                    if (panel === "tools" && resolvedAgentId) {
+                      if (
+                        state.toolsCatalogResult?.agentId !== resolvedAgentId ||
+                        state.toolsCatalogError
+                      ) {
+                        void loadToolsCatalog(state, resolvedAgentId);
+                      }
+                    }
+                    if (panel === "channels") {
+                      void loadChannels(state, false);
+                    }
+                    if (panel === "cron") {
+                      void state.loadCron();
+                    }
+                  },
+                  onLoadFiles: (agentId) => loadAgentFiles(state, agentId),
+                  onSelectFile: (name) => {
+                    state.agentFileActive = name;
+                    if (!resolvedAgentId) {
+                      return;
+                    }
+                    void loadAgentFileContent(state, resolvedAgentId, name);
+                  },
+                  onFileDraftChange: (name, content) => {
+                    state.agentFileDrafts = { ...state.agentFileDrafts, [name]: content };
+                  },
+                  onFileReset: (name) => {
+                    const base = state.agentFileContents[name] ?? "";
+                    state.agentFileDrafts = { ...state.agentFileDrafts, [name]: base };
+                  },
+                  onFileSave: (name) => {
+                    if (!resolvedAgentId) {
+                      return;
+                    }
+                    const content =
+                      state.agentFileDrafts[name] ?? state.agentFileContents[name] ?? "";
+                    void saveAgentFile(state, resolvedAgentId, name, content);
+                  },
+                  onToolsProfileChange: (agentId, profile, clearAllow) => {
+                    const index =
+                      profile || clearAllow ? ensureAgentIndex(agentId) : findAgentIndex(agentId);
+                    if (index < 0) {
+                      return;
+                    }
+                    const basePath = ["agents", "list", index, "tools"];
+                    if (profile) {
+                      updateConfigFormValue(state, [...basePath, "profile"], profile);
+                    } else {
+                      removeConfigFormValue(state, [...basePath, "profile"]);
+                    }
+                    if (clearAllow) {
+                      removeConfigFormValue(state, [...basePath, "allow"]);
+                    }
+                  },
+                  onToolsOverridesChange: (agentId, alsoAllow, deny) => {
+                    const index =
+                      alsoAllow.length > 0 || deny.length > 0
+                        ? ensureAgentIndex(agentId)
+                        : findAgentIndex(agentId);
+                    if (index < 0) {
+                      return;
+                    }
+                    const basePath = ["agents", "list", index, "tools"];
+                    if (alsoAllow.length > 0) {
+                      updateConfigFormValue(state, [...basePath, "alsoAllow"], alsoAllow);
+                    } else {
+                      removeConfigFormValue(state, [...basePath, "alsoAllow"]);
+                    }
+                    if (deny.length > 0) {
+                      updateConfigFormValue(state, [...basePath, "deny"], deny);
+                    } else {
+                      removeConfigFormValue(state, [...basePath, "deny"]);
+                    }
+                  },
+                  onConfigReload: () => loadConfig(state),
+                  onConfigSave: () => saveAgentsConfig(state),
+                  onChannelsRefresh: () => loadChannels(state, false),
+                  onCronRefresh: () => state.loadCron(),
+                  onCronRunNow: (jobId) => {
+                    const job = state.cronJobs.find((entry) => entry.id === jobId);
+                    if (!job) {
+                      return;
+                    }
+                    void runCronJob(state, job, "force");
+                  },
+                  onSkillsFilterChange: (next) => (state.skillsFilter = next),
+                  onSkillsRefresh: () => {
                     if (resolvedAgentId) {
                       void loadAgentSkills(state, resolvedAgentId);
                     }
-                  }
-                  if (panel === "tools" && resolvedAgentId) {
-                    if (
-                      state.toolsCatalogResult?.agentId !== resolvedAgentId ||
-                      state.toolsCatalogError
-                    ) {
-                      void loadToolsCatalog(state, resolvedAgentId);
+                  },
+                  onAgentSkillToggle: (agentId, skillName, enabled) => {
+                    const index = ensureAgentIndex(agentId);
+                    if (index < 0) {
+                      return;
                     }
-                  }
-                  if (panel === "channels") {
-                    void loadChannels(state, false);
-                  }
-                  if (panel === "cron") {
-                    void state.loadCron();
-                  }
-                },
-                onLoadFiles: (agentId) => loadAgentFiles(state, agentId),
-                onSelectFile: (name) => {
-                  state.agentFileActive = name;
-                  if (!resolvedAgentId) {
-                    return;
-                  }
-                  void loadAgentFileContent(state, resolvedAgentId, name);
-                },
-                onFileDraftChange: (name, content) => {
-                  state.agentFileDrafts = { ...state.agentFileDrafts, [name]: content };
-                },
-                onFileReset: (name) => {
-                  const base = state.agentFileContents[name] ?? "";
-                  state.agentFileDrafts = { ...state.agentFileDrafts, [name]: base };
-                },
-                onFileSave: (name) => {
-                  if (!resolvedAgentId) {
-                    return;
-                  }
-                  const content =
-                    state.agentFileDrafts[name] ?? state.agentFileContents[name] ?? "";
-                  void saveAgentFile(state, resolvedAgentId, name, content);
-                },
-                onToolsProfileChange: (agentId, profile, clearAllow) => {
-                  const index =
-                    profile || clearAllow ? ensureAgentIndex(agentId) : findAgentIndex(agentId);
-                  if (index < 0) {
-                    return;
-                  }
-                  const basePath = ["agents", "list", index, "tools"];
-                  if (profile) {
-                    updateConfigFormValue(state, [...basePath, "profile"], profile);
-                  } else {
-                    removeConfigFormValue(state, [...basePath, "profile"]);
-                  }
-                  if (clearAllow) {
-                    removeConfigFormValue(state, [...basePath, "allow"]);
-                  }
-                },
-                onToolsOverridesChange: (agentId, alsoAllow, deny) => {
-                  const index =
-                    alsoAllow.length > 0 || deny.length > 0
-                      ? ensureAgentIndex(agentId)
-                      : findAgentIndex(agentId);
-                  if (index < 0) {
-                    return;
-                  }
-                  const basePath = ["agents", "list", index, "tools"];
-                  if (alsoAllow.length > 0) {
-                    updateConfigFormValue(state, [...basePath, "alsoAllow"], alsoAllow);
-                  } else {
-                    removeConfigFormValue(state, [...basePath, "alsoAllow"]);
-                  }
-                  if (deny.length > 0) {
-                    updateConfigFormValue(state, [...basePath, "deny"], deny);
-                  } else {
-                    removeConfigFormValue(state, [...basePath, "deny"]);
-                  }
-                },
-                onConfigReload: () => loadConfig(state),
-                onConfigSave: () => saveAgentsConfig(state),
-                onChannelsRefresh: () => loadChannels(state, false),
-                onCronRefresh: () => state.loadCron(),
-                onCronRunNow: (jobId) => {
-                  const job = state.cronJobs.find((entry) => entry.id === jobId);
-                  if (!job) {
-                    return;
-                  }
-                  void runCronJob(state, job, "force");
-                },
-                onSkillsFilterChange: (next) => (state.skillsFilter = next),
-                onSkillsRefresh: () => {
-                  if (resolvedAgentId) {
-                    void loadAgentSkills(state, resolvedAgentId);
-                  }
-                },
-                onAgentSkillToggle: (agentId, skillName, enabled) => {
-                  const index = ensureAgentIndex(agentId);
-                  if (index < 0) {
-                    return;
-                  }
-                  const list = (getCurrentConfigValue() as { agents?: { list?: unknown[] } } | null)
-                    ?.agents?.list;
-                  const entry = Array.isArray(list)
-                    ? (list[index] as { skills?: unknown })
-                    : undefined;
-                  const normalizedSkill = skillName.trim();
-                  if (!normalizedSkill) {
-                    return;
-                  }
-                  const allSkills =
-                    state.agentSkillsReport?.skills?.map((skill) => skill.name).filter(Boolean) ??
-                    [];
-                  const existing = Array.isArray(entry?.skills)
-                    ? entry.skills.map((name) => String(name).trim()).filter(Boolean)
-                    : undefined;
-                  const base = existing ?? allSkills;
-                  const next = new Set(base);
-                  if (enabled) {
-                    next.add(normalizedSkill);
-                  } else {
-                    next.delete(normalizedSkill);
-                  }
-                  updateConfigFormValue(state, ["agents", "list", index, "skills"], [...next]);
-                },
-                onAgentSkillsClear: (agentId) => {
-                  const index = findAgentIndex(agentId);
-                  if (index < 0) {
-                    return;
-                  }
-                  removeConfigFormValue(state, ["agents", "list", index, "skills"]);
-                },
-                onAgentSkillsDisableAll: (agentId) => {
-                  const index = ensureAgentIndex(agentId);
-                  if (index < 0) {
-                    return;
-                  }
-                  updateConfigFormValue(state, ["agents", "list", index, "skills"], []);
-                },
-                onModelChange: (agentId, modelId) => {
-                  const index = modelId ? ensureAgentIndex(agentId) : findAgentIndex(agentId);
-                  if (index < 0) {
-                    return;
-                  }
-                  const list = (getCurrentConfigValue() as { agents?: { list?: unknown[] } } | null)
-                    ?.agents?.list;
-                  const basePath = ["agents", "list", index, "model"];
-                  if (!modelId) {
-                    removeConfigFormValue(state, basePath);
-                    return;
-                  }
-                  const entry = Array.isArray(list)
-                    ? (list[index] as { model?: unknown })
-                    : undefined;
-                  const existing = entry?.model;
-                  if (existing && typeof existing === "object" && !Array.isArray(existing)) {
-                    const fallbacks = (existing as { fallbacks?: unknown }).fallbacks;
-                    const next = {
-                      primary: modelId,
-                      ...(Array.isArray(fallbacks) ? { fallbacks } : {}),
-                    };
-                    updateConfigFormValue(state, basePath, next);
-                  } else {
-                    updateConfigFormValue(state, basePath, modelId);
-                  }
-                },
-                onModelFallbacksChange: (agentId, fallbacks) => {
-                  const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
-                  const currentConfig = getCurrentConfigValue();
-                  const resolvedConfig = resolveAgentConfig(currentConfig, agentId);
-                  const effectivePrimary =
-                    resolveModelPrimary(resolvedConfig.entry?.model) ??
-                    resolveModelPrimary(resolvedConfig.defaults?.model);
-                  const effectiveFallbacks = resolveEffectiveModelFallbacks(
-                    resolvedConfig.entry?.model,
-                    resolvedConfig.defaults?.model,
-                  );
-                  const index =
-                    normalized.length > 0
-                      ? effectivePrimary
-                        ? ensureAgentIndex(agentId)
-                        : -1
-                      : (effectiveFallbacks?.length ?? 0) > 0 || findAgentIndex(agentId) >= 0
-                        ? ensureAgentIndex(agentId)
-                        : -1;
-                  if (index < 0) {
-                    return;
-                  }
-                  const list = (getCurrentConfigValue() as { agents?: { list?: unknown[] } } | null)
-                    ?.agents?.list;
-                  const basePath = ["agents", "list", index, "model"];
-                  const entry = Array.isArray(list)
-                    ? (list[index] as { model?: unknown })
-                    : undefined;
-                  const existing = entry?.model;
-                  const resolvePrimary = () => {
-                    if (typeof existing === "string") {
-                      return existing.trim() || null;
+                    const list = (
+                      getCurrentConfigValue() as { agents?: { list?: unknown[] } } | null
+                    )?.agents?.list;
+                    const entry = Array.isArray(list)
+                      ? (list[index] as { skills?: unknown })
+                      : undefined;
+                    const normalizedSkill = skillName.trim();
+                    if (!normalizedSkill) {
+                      return;
                     }
-                    if (existing && typeof existing === "object" && !Array.isArray(existing)) {
-                      const primary = (existing as { primary?: unknown }).primary;
-                      if (typeof primary === "string") {
-                        const trimmed = primary.trim();
-                        return trimmed || null;
-                      }
-                    }
-                    return null;
-                  };
-                  const primary = resolvePrimary() ?? effectivePrimary;
-                  if (normalized.length === 0) {
-                    if (primary) {
-                      updateConfigFormValue(state, basePath, primary);
+                    const allSkills =
+                      state.agentSkillsReport?.skills?.map((skill) => skill.name).filter(Boolean) ??
+                      [];
+                    const existing = Array.isArray(entry?.skills)
+                      ? entry.skills.map((name) => String(name).trim()).filter(Boolean)
+                      : undefined;
+                    const base = existing ?? allSkills;
+                    const next = new Set(base);
+                    if (enabled) {
+                      next.add(normalizedSkill);
                     } else {
-                      removeConfigFormValue(state, basePath);
+                      next.delete(normalizedSkill);
                     }
-                    return;
-                  }
-                  if (!primary) {
-                    return;
-                  }
-                  updateConfigFormValue(state, basePath, { primary, fallbacks: normalized });
-                },
-                onSetDefault: (agentId) => {
-                  if (!configValue) {
-                    return;
-                  }
-                  updateConfigFormValue(state, ["agents", "defaultId"], agentId);
-                },
-              })
+                    updateConfigFormValue(state, ["agents", "list", index, "skills"], [...next]);
+                  },
+                  onAgentSkillsClear: (agentId) => {
+                    const index = findAgentIndex(agentId);
+                    if (index < 0) {
+                      return;
+                    }
+                    removeConfigFormValue(state, ["agents", "list", index, "skills"]);
+                  },
+                  onAgentSkillsDisableAll: (agentId) => {
+                    const index = ensureAgentIndex(agentId);
+                    if (index < 0) {
+                      return;
+                    }
+                    updateConfigFormValue(state, ["agents", "list", index, "skills"], []);
+                  },
+                  onModelChange: (agentId, modelId) => {
+                    const index = modelId ? ensureAgentIndex(agentId) : findAgentIndex(agentId);
+                    if (index < 0) {
+                      return;
+                    }
+                    const list = (
+                      getCurrentConfigValue() as { agents?: { list?: unknown[] } } | null
+                    )?.agents?.list;
+                    const basePath = ["agents", "list", index, "model"];
+                    if (!modelId) {
+                      removeConfigFormValue(state, basePath);
+                      return;
+                    }
+                    const entry = Array.isArray(list)
+                      ? (list[index] as { model?: unknown })
+                      : undefined;
+                    const existing = entry?.model;
+                    if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+                      const fallbacks = (existing as { fallbacks?: unknown }).fallbacks;
+                      const next = {
+                        primary: modelId,
+                        ...(Array.isArray(fallbacks) ? { fallbacks } : {}),
+                      };
+                      updateConfigFormValue(state, basePath, next);
+                    } else {
+                      updateConfigFormValue(state, basePath, modelId);
+                    }
+                  },
+                  onModelFallbacksChange: (agentId, fallbacks) => {
+                    const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
+                    const currentConfig = getCurrentConfigValue();
+                    const resolvedConfig = resolveAgentConfig(currentConfig, agentId);
+                    const effectivePrimary =
+                      resolveModelPrimary(resolvedConfig.entry?.model) ??
+                      resolveModelPrimary(resolvedConfig.defaults?.model);
+                    const effectiveFallbacks = resolveEffectiveModelFallbacks(
+                      resolvedConfig.entry?.model,
+                      resolvedConfig.defaults?.model,
+                    );
+                    const index =
+                      normalized.length > 0
+                        ? effectivePrimary
+                          ? ensureAgentIndex(agentId)
+                          : -1
+                        : (effectiveFallbacks?.length ?? 0) > 0 || findAgentIndex(agentId) >= 0
+                          ? ensureAgentIndex(agentId)
+                          : -1;
+                    if (index < 0) {
+                      return;
+                    }
+                    const list = (
+                      getCurrentConfigValue() as { agents?: { list?: unknown[] } } | null
+                    )?.agents?.list;
+                    const basePath = ["agents", "list", index, "model"];
+                    const entry = Array.isArray(list)
+                      ? (list[index] as { model?: unknown })
+                      : undefined;
+                    const existing = entry?.model;
+                    const resolvePrimary = () => {
+                      if (typeof existing === "string") {
+                        return existing.trim() || null;
+                      }
+                      if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+                        const primary = (existing as { primary?: unknown }).primary;
+                        if (typeof primary === "string") {
+                          const trimmed = primary.trim();
+                          return trimmed || null;
+                        }
+                      }
+                      return null;
+                    };
+                    const primary = resolvePrimary() ?? effectivePrimary;
+                    if (normalized.length === 0) {
+                      if (primary) {
+                        updateConfigFormValue(state, basePath, primary);
+                      } else {
+                        removeConfigFormValue(state, basePath);
+                      }
+                      return;
+                    }
+                    if (!primary) {
+                      return;
+                    }
+                    updateConfigFormValue(state, basePath, { primary, fallbacks: normalized });
+                  },
+                  onSetDefault: (agentId) => {
+                    if (!configValue) {
+                      return;
+                    }
+                    updateConfigFormValue(state, ["agents", "defaultId"], agentId);
+                  },
+                }),
+              )
             : nothing
         }
 
         ${
           state.tab === "skills"
-            ? renderSkills({
-                loading: state.skillsLoading,
-                report: state.skillsReport,
-                error: state.skillsError,
-                filter: state.skillsFilter,
-                edits: state.skillEdits,
-                messages: state.skillMessages,
-                busyKey: state.skillsBusyKey,
-                onFilterChange: (next) => (state.skillsFilter = next),
-                onRefresh: () => loadSkills(state, { clearMessages: true }),
-                onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
-                onEdit: (key, value) => updateSkillEdit(state, key, value),
-                onSaveKey: (key) => saveSkillApiKey(state, key),
-                onInstall: (skillKey, name, installId) =>
-                  installSkill(state, skillKey, name, installId),
-              })
+            ? lazyRender(lazySkills, (m) =>
+                m.renderSkills({
+                  loading: state.skillsLoading,
+                  report: state.skillsReport,
+                  error: state.skillsError,
+                  filter: state.skillsFilter,
+                  edits: state.skillEdits,
+                  messages: state.skillMessages,
+                  busyKey: state.skillsBusyKey,
+                  onFilterChange: (next) => (state.skillsFilter = next),
+                  onRefresh: () => loadSkills(state, { clearMessages: true }),
+                  onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
+                  onEdit: (key, value) => updateSkillEdit(state, key, value),
+                  onSaveKey: (key) => saveSkillApiKey(state, key),
+                  onInstall: (skillKey, name, installId) =>
+                    installSkill(state, skillKey, name, installId),
+                }),
+              )
             : nothing
         }
 
         ${
           state.tab === "nodes"
-            ? renderNodes({
-                loading: state.nodesLoading,
-                nodes: state.nodes,
-                devicesLoading: state.devicesLoading,
-                devicesError: state.devicesError,
-                devicesList: state.devicesList,
-                configForm:
-                  state.configForm ??
-                  (state.configSnapshot?.config as Record<string, unknown> | null),
-                configLoading: state.configLoading,
-                configSaving: state.configSaving,
-                configDirty: state.configFormDirty,
-                configFormMode: state.configFormMode,
-                execApprovalsLoading: state.execApprovalsLoading,
-                execApprovalsSaving: state.execApprovalsSaving,
-                execApprovalsDirty: state.execApprovalsDirty,
-                execApprovalsSnapshot: state.execApprovalsSnapshot,
-                execApprovalsForm: state.execApprovalsForm,
-                execApprovalsSelectedAgent: state.execApprovalsSelectedAgent,
-                execApprovalsTarget: state.execApprovalsTarget,
-                execApprovalsTargetNodeId: state.execApprovalsTargetNodeId,
-                onRefresh: () => loadNodes(state),
-                onDevicesRefresh: () => loadDevices(state),
-                onDeviceApprove: (requestId) => approveDevicePairing(state, requestId),
-                onDeviceReject: (requestId) => rejectDevicePairing(state, requestId),
-                onDeviceRotate: (deviceId, role, scopes) =>
-                  rotateDeviceToken(state, { deviceId, role, scopes }),
-                onDeviceRevoke: (deviceId, role) => revokeDeviceToken(state, { deviceId, role }),
-                onLoadConfig: () => loadConfig(state),
-                onLoadExecApprovals: () => {
-                  const target =
-                    state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
-                      ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
-                      : { kind: "gateway" as const };
-                  return loadExecApprovals(state, target);
-                },
-                onBindDefault: (nodeId) => {
-                  if (nodeId) {
-                    updateConfigFormValue(state, ["tools", "exec", "node"], nodeId);
-                  } else {
-                    removeConfigFormValue(state, ["tools", "exec", "node"]);
-                  }
-                },
-                onBindAgent: (agentIndex, nodeId) => {
-                  const basePath = ["agents", "list", agentIndex, "tools", "exec", "node"];
-                  if (nodeId) {
-                    updateConfigFormValue(state, basePath, nodeId);
-                  } else {
-                    removeConfigFormValue(state, basePath);
-                  }
-                },
-                onSaveBindings: () => saveConfig(state),
-                onExecApprovalsTargetChange: (kind, nodeId) => {
-                  state.execApprovalsTarget = kind;
-                  state.execApprovalsTargetNodeId = nodeId;
-                  state.execApprovalsSnapshot = null;
-                  state.execApprovalsForm = null;
-                  state.execApprovalsDirty = false;
-                  state.execApprovalsSelectedAgent = null;
-                },
-                onExecApprovalsSelectAgent: (agentId) => {
-                  state.execApprovalsSelectedAgent = agentId;
-                },
-                onExecApprovalsPatch: (path, value) =>
-                  updateExecApprovalsFormValue(state, path, value),
-                onExecApprovalsRemove: (path) => removeExecApprovalsFormValue(state, path),
-                onSaveExecApprovals: () => {
-                  const target =
-                    state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
-                      ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
-                      : { kind: "gateway" as const };
-                  return saveExecApprovals(state, target);
-                },
-              })
+            ? lazyRender(lazyNodes, (m) =>
+                m.renderNodes({
+                  loading: state.nodesLoading,
+                  nodes: state.nodes,
+                  devicesLoading: state.devicesLoading,
+                  devicesError: state.devicesError,
+                  devicesList: state.devicesList,
+                  configForm:
+                    state.configForm ??
+                    (state.configSnapshot?.config as Record<string, unknown> | null),
+                  configLoading: state.configLoading,
+                  configSaving: state.configSaving,
+                  configDirty: state.configFormDirty,
+                  configFormMode: state.configFormMode,
+                  execApprovalsLoading: state.execApprovalsLoading,
+                  execApprovalsSaving: state.execApprovalsSaving,
+                  execApprovalsDirty: state.execApprovalsDirty,
+                  execApprovalsSnapshot: state.execApprovalsSnapshot,
+                  execApprovalsForm: state.execApprovalsForm,
+                  execApprovalsSelectedAgent: state.execApprovalsSelectedAgent,
+                  execApprovalsTarget: state.execApprovalsTarget,
+                  execApprovalsTargetNodeId: state.execApprovalsTargetNodeId,
+                  onRefresh: () => loadNodes(state),
+                  onDevicesRefresh: () => loadDevices(state),
+                  onDeviceApprove: (requestId) => approveDevicePairing(state, requestId),
+                  onDeviceReject: (requestId) => rejectDevicePairing(state, requestId),
+                  onDeviceRotate: (deviceId, role, scopes) =>
+                    rotateDeviceToken(state, { deviceId, role, scopes }),
+                  onDeviceRevoke: (deviceId, role) => revokeDeviceToken(state, { deviceId, role }),
+                  onLoadConfig: () => loadConfig(state),
+                  onLoadExecApprovals: () => {
+                    const target =
+                      state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
+                        ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
+                        : { kind: "gateway" as const };
+                    return loadExecApprovals(state, target);
+                  },
+                  onBindDefault: (nodeId) => {
+                    if (nodeId) {
+                      updateConfigFormValue(state, ["tools", "exec", "node"], nodeId);
+                    } else {
+                      removeConfigFormValue(state, ["tools", "exec", "node"]);
+                    }
+                  },
+                  onBindAgent: (agentIndex, nodeId) => {
+                    const basePath = ["agents", "list", agentIndex, "tools", "exec", "node"];
+                    if (nodeId) {
+                      updateConfigFormValue(state, basePath, nodeId);
+                    } else {
+                      removeConfigFormValue(state, basePath);
+                    }
+                  },
+                  onSaveBindings: () => saveConfig(state),
+                  onExecApprovalsTargetChange: (kind, nodeId) => {
+                    state.execApprovalsTarget = kind;
+                    state.execApprovalsTargetNodeId = nodeId;
+                    state.execApprovalsSnapshot = null;
+                    state.execApprovalsForm = null;
+                    state.execApprovalsDirty = false;
+                    state.execApprovalsSelectedAgent = null;
+                  },
+                  onExecApprovalsSelectAgent: (agentId) => {
+                    state.execApprovalsSelectedAgent = agentId;
+                  },
+                  onExecApprovalsPatch: (path, value) =>
+                    updateExecApprovalsFormValue(state, path, value),
+                  onExecApprovalsRemove: (path) => removeExecApprovalsFormValue(state, path),
+                  onSaveExecApprovals: () => {
+                    const target =
+                      state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
+                        ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
+                        : { kind: "gateway" as const };
+                    return saveExecApprovals(state, target);
+                  },
+                }),
+              )
             : nothing
         }
 
@@ -1821,46 +1868,49 @@ export function renderApp(state: AppViewState) {
 
         ${
           state.tab === "debug"
-            ? renderDebug({
-                loading: state.debugLoading,
-                status: state.debugStatus,
-                health: state.debugHealth,
-                models: state.debugModels,
-                heartbeat: state.debugHeartbeat,
-                eventLog: state.eventLog,
-                methods: (state.hello?.features?.methods ?? []).toSorted(),
-                callMethod: state.debugCallMethod,
-                callParams: state.debugCallParams,
-                callResult: state.debugCallResult,
-                callError: state.debugCallError,
-                onCallMethodChange: (next) => (state.debugCallMethod = next),
-                onCallParamsChange: (next) => (state.debugCallParams = next),
-                onRefresh: () => loadDebug(state),
-                onCall: () => callDebugMethod(state),
-              })
+            ? lazyRender(lazyDebug, (m) =>
+                m.renderDebug({
+                  loading: state.debugLoading,
+                  status: state.debugStatus,
+                  health: state.debugHealth,
+                  models: state.debugModels,
+                  heartbeat: state.debugHeartbeat,
+                  eventLog: state.eventLog,
+                  callMethod: state.debugCallMethod,
+                  callParams: state.debugCallParams,
+                  callResult: state.debugCallResult,
+                  callError: state.debugCallError,
+                  onCallMethodChange: (next) => (state.debugCallMethod = next),
+                  onCallParamsChange: (next) => (state.debugCallParams = next),
+                  onRefresh: () => loadDebug(state),
+                  onCall: () => callDebugMethod(state),
+                }),
+              )
             : nothing
         }
 
         ${
           state.tab === "logs"
-            ? renderLogs({
-                loading: state.logsLoading,
-                error: state.logsError,
-                file: state.logsFile,
-                entries: state.logsEntries,
-                filterText: state.logsFilterText,
-                levelFilters: state.logsLevelFilters,
-                autoFollow: state.logsAutoFollow,
-                truncated: state.logsTruncated,
-                onFilterTextChange: (next) => (state.logsFilterText = next),
-                onLevelToggle: (level, enabled) => {
-                  state.logsLevelFilters = { ...state.logsLevelFilters, [level]: enabled };
-                },
-                onToggleAutoFollow: (next) => (state.logsAutoFollow = next),
-                onRefresh: () => loadLogs(state, { reset: true }),
-                onExport: (lines, label) => state.exportLogs(lines, label),
-                onScroll: (event) => state.handleLogsScroll(event),
-              })
+            ? lazyRender(lazyLogs, (m) =>
+                m.renderLogs({
+                  loading: state.logsLoading,
+                  error: state.logsError,
+                  file: state.logsFile,
+                  entries: state.logsEntries,
+                  filterText: state.logsFilterText,
+                  levelFilters: state.logsLevelFilters,
+                  autoFollow: state.logsAutoFollow,
+                  truncated: state.logsTruncated,
+                  onFilterTextChange: (next) => (state.logsFilterText = next),
+                  onLevelToggle: (level, enabled) => {
+                    state.logsLevelFilters = { ...state.logsLevelFilters, [level]: enabled };
+                  },
+                  onToggleAutoFollow: (next) => (state.logsAutoFollow = next),
+                  onRefresh: () => loadLogs(state, { reset: true }),
+                  onExport: (lines, label) => state.exportLogs(lines, label),
+                  onScroll: (event) => state.handleLogsScroll(event),
+                }),
+              )
             : nothing
         }
       </main>

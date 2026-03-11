@@ -53,7 +53,29 @@ function renderStatCard(card: StatCard, onNavigate: (tab: string) => void) {
   `;
 }
 
+function renderSkeletonCards() {
+  return html`
+    <section class="ov-cards">
+      ${[0, 1, 2, 3].map(
+        (i) => html`
+          <div class="ov-card" style="cursor:default;animation-delay:${i * 50}ms">
+            <span class="skeleton skeleton-line" style="width:60px;height:10px"></span>
+            <span class="skeleton skeleton-stat"></span>
+            <span class="skeleton skeleton-line skeleton-line--medium" style="height:12px"></span>
+          </div>
+        `,
+      )}
+    </section>
+  `;
+}
+
 export function renderOverviewCards(props: OverviewCardsProps) {
+  const dataLoaded =
+    props.usageResult != null || props.sessionsResult != null || props.skillsReport != null;
+  if (!dataLoaded) {
+    return renderSkeletonCards();
+  }
+
   const totals = props.usageResult?.totals;
   const totalCost = formatCost(totals?.totalCost);
   const totalTokens = formatTokens(totals?.totalTokens);

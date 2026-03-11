@@ -115,6 +115,19 @@ function groupItems(items: PaletteItem[]): Array<[string, PaletteItem[]]> {
   return [...map.entries()];
 }
 
+let previouslyFocused: Element | null = null;
+
+function saveFocus() {
+  previouslyFocused = document.activeElement;
+}
+
+function restoreFocus() {
+  if (previouslyFocused && previouslyFocused instanceof HTMLElement) {
+    requestAnimationFrame(() => previouslyFocused && (previouslyFocused as HTMLElement).focus());
+  }
+  previouslyFocused = null;
+}
+
 function selectItem(item: PaletteItem, props: CommandPaletteProps) {
   if (item.action.startsWith("nav:")) {
     props.onNavigate(item.action.slice(4));
@@ -122,6 +135,7 @@ function selectItem(item: PaletteItem, props: CommandPaletteProps) {
     props.onSlashCommand(item.action);
   }
   props.onToggle();
+  restoreFocus();
 }
 
 function scrollActiveIntoView() {
@@ -153,6 +167,7 @@ function handleKeydown(e: KeyboardEvent, props: CommandPaletteProps) {
     case "Escape":
       e.preventDefault();
       props.onToggle();
+      restoreFocus();
       break;
   }
 }
@@ -165,6 +180,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function focusInput(el: Element | undefined) {
   if (el) {
+    saveFocus();
     requestAnimationFrame(() => (el as HTMLInputElement).focus());
   }
 }
@@ -178,7 +194,10 @@ export function renderCommandPalette(props: CommandPaletteProps) {
   const grouped = groupItems(items);
 
   return html`
-    <div class="cmd-palette-overlay" @click=${() => props.onToggle()}>
+    <div class="cmd-palette-overlay" @click=${() => {
+      props.onToggle();
+      restoreFocus();
+    }}>
       <div
         class="cmd-palette"
         @click=${(e: Event) => e.stopPropagation()}
@@ -197,7 +216,10 @@ export function renderCommandPalette(props: CommandPaletteProps) {
         <div class="cmd-palette__results">
           ${
             grouped.length === 0
-              ? html`<div class="muted" style="padding: 12px 16px">${t("overview.palette.noResults")}</div>`
+              ? html`<div class="cmd-palette__empty">
+                  <span class="nav-item__icon" style="opacity:0.3;width:20px;height:20px">${icons.search}</span>
+                  <span>${t("overview.palette.noResults")}</span>
+                </div>`
               : grouped.map(
                   ([category, groupedItems]) => html`
                 <div class="cmd-palette__group-label">${CATEGORY_LABELS[category] ?? category}</div>
@@ -226,6 +248,11 @@ export function renderCommandPalette(props: CommandPaletteProps) {
               `,
                 )
           }
+        </div>
+        <div class="cmd-palette__footer">
+          <span><kbd>↑↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> select</span>
+          <span><kbd>esc</kbd> close</span>
         </div>
       </div>
     </div>

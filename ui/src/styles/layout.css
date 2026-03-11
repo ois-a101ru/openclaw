@@ -315,7 +315,7 @@
   background: var(--bg);
 }
 
-:root[data-theme="light"] .sidebar {
+:root[data-theme-mode="light"] .sidebar {
   background: var(--panel);
 }
 
@@ -324,6 +324,7 @@
   width: var(--shell-nav-rail-width);
   min-width: var(--shell-nav-rail-width);
   flex: 0 0 var(--shell-nav-rail-width);
+  border-right: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
 }
 
 /* Header: brand + collapse toggle */
@@ -338,7 +339,7 @@
 
 .sidebar--collapsed .sidebar-header {
   justify-content: center;
-  padding: 14px 10px 10px;
+  padding: 12px 10px 8px;
 }
 
 /* Brand lockup */
@@ -380,9 +381,9 @@
 }
 
 .sidebar--collapsed .sidebar-nav {
-  padding: 6px 8px 10px;
+  padding: 4px 8px 8px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* Collapsed sidebar: centre icons, hide text */
@@ -391,17 +392,17 @@
 }
 
 .sidebar--collapsed .nav-group {
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 0;
 }
 
 .sidebar--collapsed .nav-item {
   justify-content: center;
   width: 44px;
-  height: 44px;
+  height: 42px;
   padding: 0;
   margin: 0 auto;
-  border-radius: 14px;
+  border-radius: 16px;
 }
 
 .sidebar--collapsed .nav-item__icon {
@@ -775,25 +776,36 @@
 .sidebar--collapsed .nav-item.active::before {
   content: "";
   position: absolute;
-  left: -10px;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
+  left: 6px;
+  top: 11px;
+  bottom: 11px;
+  width: 2px;
   border-radius: 999px;
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 78%, transparent);
+}
+
+.sidebar--collapsed .nav-item.active,
+.sidebar--collapsed .nav-item--active {
+  background: color-mix(in srgb, var(--accent-subtle) 88%, var(--bg-elevated) 12%);
+  border-color: color-mix(in srgb, var(--accent) 12%, var(--border) 88%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .sidebar--collapsed .nav-collapse-toggle {
   width: 44px;
-  height: 44px;
+  height: 34px;
   margin-bottom: 0;
-  border-color: var(--border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 74%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent),
+    0 8px 18px color-mix(in srgb, black 16%, transparent);
 }
 
 .sidebar--collapsed .nav-collapse-toggle:hover {
   border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
 }
 
 .nav-item__external-icon {
@@ -839,7 +851,7 @@
   margin-top: 20px;
 }
 
-:root[data-theme="light"] .content {
+:root[data-theme-mode="light"] .content {
   background: var(--bg-content);
 }
 

@@ -1,5 +1,6 @@
 import { render } from "lit";
 import { describe, expect, it, vi } from "vitest";
+import { TelegramConfigSchema } from "../../../src/config/zod-schema.providers-core.ts";
 import { analyzeConfigSchema, renderConfigForm } from "./views/config-form.ts";
 
 const rootSchema = {
@@ -534,5 +535,28 @@ describe("config form renderer", () => {
     expect(removeButton).not.toBeNull();
     removeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onPatch).toHaveBeenCalledWith(["accounts"], {});
+  });
+
+  it("accepts the real Telegram channel schema without forcing raw mode", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        channels: {
+          type: "object",
+          properties: {
+            telegram: TelegramConfigSchema.toJSONSchema({
+              target: "draft-07",
+              unrepresentable: "any",
+            }),
+          },
+        },
+      },
+    };
+
+    const analysis = analyzeConfigSchema(schema);
+    expect(analysis.unsupportedPaths).not.toContain("channels.telegram");
+    expect(analysis.unsupportedPaths).not.toContain("channels.telegram.capabilities");
+    expect(analysis.unsupportedPaths).not.toContain("channels.telegram.customCommands");
+    expect(analysis.unsupportedPaths).not.toContain("channels.telegram.accounts");
   });
 });

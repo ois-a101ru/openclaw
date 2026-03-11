@@ -219,17 +219,17 @@
 }
 
 /* Light theme attachment overrides */
-:root[data-theme="light"] .chat-attachments {
+:root[data-theme-mode="light"] .chat-attachments {
   background: #f8fafc;
   border-color: rgba(16, 24, 40, 0.1);
 }
 
-:root[data-theme="light"] .chat-attachment {
+:root[data-theme-mode="light"] .chat-attachment {
   border-color: rgba(16, 24, 40, 0.15);
   background: #fff;
 }
 
-:root[data-theme="light"] .chat-attachment__remove {
+:root[data-theme-mode="light"] .chat-attachment__remove {
   background: rgba(0, 0, 0, 0.6);
 }
 
@@ -267,7 +267,7 @@
   flex: 1;
 }
 
-:root[data-theme="light"] .chat-compose {
+:root[data-theme-mode="light"] .chat-compose {
   background: linear-gradient(to bottom, transparent, var(--bg-content) 20%);
 }
 
@@ -697,7 +697,7 @@
   font-weight: 300;
 }
 
-:root[data-theme="light"] .chat-controls__separator {
+:root[data-theme-mode="light"] .chat-controls__separator {
   color: rgba(16, 24, 40, 0.3);
 }
 
@@ -707,34 +707,34 @@
 }
 
 /* Light theme icon button overrides */
-:root[data-theme="light"] .btn--icon {
+:root[data-theme-mode="light"] .btn--icon {
   background: #ffffff;
   border-color: var(--border);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   color: var(--muted);
 }
 
-:root[data-theme="light"] .btn--icon:hover {
+:root[data-theme-mode="light"] .btn--icon:hover {
   background: #ffffff;
   border-color: var(--border-strong);
   color: var(--text);
 }
 
 /* Light theme icon button overrides */
-:root[data-theme="light"] .btn--icon {
+:root[data-theme-mode="light"] .btn--icon {
   background: #ffffff;
   border-color: var(--border);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   color: var(--muted);
 }
 
-:root[data-theme="light"] .btn--icon:hover {
+:root[data-theme-mode="light"] .btn--icon:hover {
   background: #ffffff;
   border-color: var(--border-strong);
   color: var(--text);
 }
 
-:root[data-theme="light"] .chat-controls .btn--icon.active {
+:root[data-theme-mode="light"] .chat-controls .btn--icon.active {
   border-color: var(--accent);
   background: var(--accent-subtle);
   color: var(--accent);
@@ -772,7 +772,7 @@
 }
 
 /* Light theme thinking indicator override */
-:root[data-theme="light"] .chat-controls__thinking {
+:root[data-theme-mode="light"] .chat-controls__thinking {
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(16, 24, 40, 0.15);
 }
@@ -812,4 +812,10 @@
   .chat-controls__session {
     min-width: 120px;
   }
+}
+
+/* Chat loading skeleton */
+.chat-loading-skeleton {
+  padding: 4px 0;
+  animation: fade-in 0.3s var(--ease-out);
 }

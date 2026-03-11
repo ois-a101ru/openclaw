@@ -306,8 +306,10 @@ export function applyResolvedTheme(host: SettingsHost, resolved: ResolvedTheme) 
     return;
   }
   const root = document.documentElement;
+  const themeMode = resolved.endsWith("light") ? "light" : "dark";
   root.dataset.theme = resolved;
-  root.style.colorScheme = resolved.endsWith("light") ? "light" : "dark";
+  root.dataset.themeMode = themeMode;
+  root.style.colorScheme = themeMode;
 }
 
 function syncSystemThemeListener(host: SettingsHost) {
