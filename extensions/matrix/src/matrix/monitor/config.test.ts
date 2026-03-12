@@ -153,4 +153,45 @@ describe("resolveMatrixMonitorConfig", () => {
       "matrix rooms must be room IDs or aliases (example: !room:server or #alias:server). Unresolved entries are ignored.",
     );
   });
+
+  it("resolves exact room aliases to canonical room ids instead of trusting alias keys directly", async () => {
+    const runtime = createRuntime();
+    const resolveTargets = vi.fn(
+      async ({ kind, inputs }: { inputs: string[]; kind: "user" | "group" }) => {
+        if (kind === "group") {
+          return inputs.map((input) =>
+            input === "#allowed:example.org"
+              ? { input, resolved: true, id: "!allowed-room:example.org" }
+              : { input, resolved: false },
+          );
+        }
+        return [];
+      },
+    );
+
+    const result = await resolveMatrixMonitorConfig({
+      cfg: {} as CoreConfig,
+      accountId: "ops",
+      roomsConfig: {
+        "#allowed:example.org": {
+          allow: true,
+        },
+      },
+      runtime,
+      resolveTargets,
+    });
+
+    expect(result.roomsConfig).toEqual({
+      "!allowed-room:example.org": {
+        allow: true,
+      },
+    });
+    expect(resolveTargets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "ops",
+        kind: "group",
+        inputs: ["#allowed:example.org"],
+      }),
+    );
+  });
 });

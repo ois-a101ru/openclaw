@@ -154,6 +154,7 @@ export {
 } from "../security/dm-policy-shared.js";
 export { normalizeStringEntries } from "../shared/string-normalization.js";
 export { formatDocsLink } from "../terminal/links.js";
+export { redactSensitiveText } from "../logging/redact.js";
 export type { WizardPrompter } from "../wizard/prompts.js";
 export {
   evaluateGroupRouteAccessForPolicy,

@@ -183,7 +183,7 @@ async function resolveMatrixMonitorRoomsConfig(params: {
       unresolved.push(entry);
       continue;
     }
-    if ((cleaned.startsWith("!") || cleaned.startsWith("#")) && cleaned.includes(":")) {
+    if (cleaned.startsWith("!") && cleaned.includes(":")) {
       if (!nextRooms[cleaned]) {
         nextRooms[cleaned] = roomConfig;
       }

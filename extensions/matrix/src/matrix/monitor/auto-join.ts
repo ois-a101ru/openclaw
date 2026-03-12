@@ -17,9 +17,13 @@ export function registerMatrixAutoJoin(params: {
     runtime.log?.(message);
   };
   const autoJoin = accountConfig.autoJoin ?? "always";
-  const autoJoinAllowlist = new Set(
-    (accountConfig.autoJoinAllowlist ?? []).map((entry) => String(entry).trim()).filter(Boolean),
-  );
+  const rawAllowlist = (accountConfig.autoJoinAllowlist ?? [])
+    .map((entry) => String(entry).trim())
+    .filter(Boolean);
+  const autoJoinAllowlist = new Set(rawAllowlist);
+  const allowedRoomIds = new Set(rawAllowlist.filter((entry) => entry.startsWith("!")));
+  const allowedAliases = rawAllowlist.filter((entry) => entry.startsWith("#"));
+  const resolvedAliasRoomIds = new Map<string, string | null>();
 
   if (autoJoin === "off") {
     return;
@@ -31,31 +35,25 @@ export function registerMatrixAutoJoin(params: {
     logVerbose("matrix: auto-join enabled for allowlist invites");
   }
 
+  const resolveAllowedAliasRoomId = async (alias: string): Promise<string | null> => {
+    if (resolvedAliasRoomIds.has(alias)) {
+      return resolvedAliasRoomIds.get(alias) ?? null;
+    }
+    const resolved = await params.client.resolveRoom(alias);
+    resolvedAliasRoomIds.set(alias, resolved);
+    return resolved;
+  };
+
   // Handle invites directly so both "always" and "allowlist" modes share the same path.
   client.on("room.invite", async (roomId: string, _inviteEvent: unknown) => {
     if (autoJoin === "allowlist") {
-      let alias: string | undefined;
-      let altAliases: string[] = [];
-      try {
-        const aliasState = await client
-          .getRoomStateEvent(roomId, "m.room.canonical_alias", "")
-          .catch(() => null);
-        alias = aliasState && typeof aliasState.alias === "string" ? aliasState.alias : undefined;
-        altAliases =
-          aliasState && Array.isArray(aliasState.alt_aliases)
-            ? aliasState.alt_aliases
-                .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-                .filter(Boolean)
-            : [];
-      } catch {
-        // Ignore errors
-      }
-
+      const allowedAliasRoomIds = await Promise.all(
+        allowedAliases.map(async (alias) => await resolveAllowedAliasRoomId(alias)),
+      );
       const allowed =
         autoJoinAllowlist.has("*") ||
-        autoJoinAllowlist.has(roomId) ||
-        (alias ? autoJoinAllowlist.has(alias) : false) ||
-        altAliases.some((value) => autoJoinAllowlist.has(value));
+        allowedRoomIds.has(roomId) ||
+        allowedAliasRoomIds.some((resolvedRoomId) => resolvedRoomId === roomId);
 
       if (!allowed) {
         logVerbose(`matrix: invite ignored (not in allowlist) room=${roomId}`);

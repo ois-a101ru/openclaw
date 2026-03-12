@@ -258,6 +258,7 @@ describe("matrix directory", () => {
       }),
     ).toEqual([
       '- Matrix rooms: groupPolicy="open" allows any room to trigger (mention-gated). Set channels.matrix.groupPolicy="allowlist" + channels.matrix.groups (and optionally channels.matrix.groupAllowFrom) to restrict rooms.',
+      '- Matrix invites: autoJoin="always" joins any invited room before message policy applies. Set channels.matrix.autoJoin="allowlist" + channels.matrix.autoJoinAllowlist (or channels.matrix.autoJoin="off") to restrict joins.',
     ]);
 
     expect(
@@ -292,6 +293,33 @@ describe("matrix directory", () => {
       }),
     ).toEqual([
       '- Matrix rooms: groupPolicy="open" allows any room to trigger (mention-gated). Set channels.matrix.accounts.assistant.groupPolicy="allowlist" + channels.matrix.accounts.assistant.groups (and optionally channels.matrix.accounts.assistant.groupAllowFrom) to restrict rooms.',
+      '- Matrix invites: autoJoin="always" joins any invited room before message policy applies. Set channels.matrix.accounts.assistant.autoJoin="allowlist" + channels.matrix.accounts.assistant.autoJoinAllowlist (or channels.matrix.accounts.assistant.autoJoin="off") to restrict joins.',
+    ]);
+  });
+
+  it("reports invite auto-join warnings even when room policy is restricted", () => {
+    expect(
+      matrixPlugin.security?.collectWarnings?.({
+        cfg: {
+          channels: {
+            matrix: {
+              groupPolicy: "allowlist",
+            },
+          },
+        } as CoreConfig,
+        account: resolveMatrixAccount({
+          cfg: {
+            channels: {
+              matrix: {
+                groupPolicy: "allowlist",
+              },
+            },
+          } as CoreConfig,
+          accountId: "default",
+        }),
+      }),
+    ).toEqual([
+      '- Matrix invites: autoJoin="always" joins any invited room before message policy applies. Set channels.matrix.autoJoin="allowlist" + channels.matrix.autoJoinAllowlist (or channels.matrix.autoJoin="off") to restrict joins.',
     ]);
   });
 

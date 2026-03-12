@@ -1,5 +1,5 @@
 import { format } from "node:util";
-import type { RuntimeLogger } from "openclaw/plugin-sdk/matrix";
+import { redactSensitiveText, type RuntimeLogger } from "openclaw/plugin-sdk/matrix";
 import { getMatrixRuntime } from "../../runtime.js";
 
 export type Logger = {
@@ -35,7 +35,7 @@ function formatMessage(module: string, messageOrObject: unknown[]): string {
   if (messageOrObject.length === 0) {
     return `[${module}]`;
   }
-  return `[${module}] ${format(...messageOrObject)}`;
+  return redactSensitiveText(`[${module}] ${format(...messageOrObject)}`);
 }
 
 export class ConsoleLogger {

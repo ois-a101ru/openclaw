@@ -16,15 +16,14 @@ function createClientStub() {
       return client;
     }),
     joinRoom: vi.fn(async () => {}),
-    getRoomStateEvent: vi.fn(async () => ({})),
+    resolveRoom: vi.fn(async () => null),
   } as unknown as import("../sdk.js").MatrixClient;
 
   return {
     client,
     getInviteHandler: () => inviteHandler,
     joinRoom: (client as unknown as { joinRoom: ReturnType<typeof vi.fn> }).joinRoom,
-    getRoomStateEvent: (client as unknown as { getRoomStateEvent: ReturnType<typeof vi.fn> })
-      .getRoomStateEvent,
+    resolveRoom: (client as unknown as { resolveRoom: ReturnType<typeof vi.fn> }).resolveRoom,
   };
 }
 
@@ -60,11 +59,8 @@ describe("registerMatrixAutoJoin", () => {
   });
 
   it("ignores invites outside allowlist when autoJoin=allowlist", async () => {
-    const { client, getInviteHandler, joinRoom, getRoomStateEvent } = createClientStub();
-    getRoomStateEvent.mockResolvedValue({
-      alias: "#other:example.org",
-      alt_aliases: ["#else:example.org"],
-    });
+    const { client, getInviteHandler, joinRoom, resolveRoom } = createClientStub();
+    resolveRoom.mockResolvedValue(null);
     const accountConfig: MatrixConfig = {
       autoJoin: "allowlist",
       autoJoinAllowlist: ["#allowed:example.org"],
@@ -86,12 +82,9 @@ describe("registerMatrixAutoJoin", () => {
     expect(joinRoom).not.toHaveBeenCalled();
   });
 
-  it("joins invite when alias matches allowlist", async () => {
-    const { client, getInviteHandler, joinRoom, getRoomStateEvent } = createClientStub();
-    getRoomStateEvent.mockResolvedValue({
-      alias: "#allowed:example.org",
-      alt_aliases: ["#backup:example.org"],
-    });
+  it("joins invite when allowlisted alias resolves to the invited room", async () => {
+    const { client, getInviteHandler, joinRoom, resolveRoom } = createClientStub();
+    resolveRoom.mockResolvedValue("!room:example.org");
     const accountConfig: MatrixConfig = {
       autoJoin: "allowlist",
       autoJoinAllowlist: [" #allowed:example.org "],
@@ -113,12 +106,32 @@ describe("registerMatrixAutoJoin", () => {
     expect(joinRoom).toHaveBeenCalledWith("!room:example.org");
   });
 
-  it("uses account-scoped auto-join settings for non-default accounts", async () => {
-    const { client, getInviteHandler, joinRoom, getRoomStateEvent } = createClientStub();
-    getRoomStateEvent.mockResolvedValue({
-      alias: "#ops-allowed:example.org",
-      alt_aliases: [],
+  it("does not trust room-provided alias claims for allowlist joins", async () => {
+    const { client, getInviteHandler, joinRoom, resolveRoom } = createClientStub();
+    resolveRoom.mockResolvedValue("!different-room:example.org");
+
+    registerMatrixAutoJoin({
+      client,
+      accountConfig: {
+        autoJoin: "allowlist",
+        autoJoinAllowlist: ["#allowed:example.org"],
+      },
+      runtime: {
+        log: vi.fn(),
+        error: vi.fn(),
+      } as unknown as import("openclaw/plugin-sdk/matrix").RuntimeEnv,
     });
+
+    const inviteHandler = getInviteHandler();
+    expect(inviteHandler).toBeTruthy();
+    await inviteHandler!("!room:example.org", {});
+
+    expect(joinRoom).not.toHaveBeenCalled();
+  });
+
+  it("uses account-scoped auto-join settings for non-default accounts", async () => {
+    const { client, getInviteHandler, joinRoom, resolveRoom } = createClientStub();
+    resolveRoom.mockResolvedValue("!room:example.org");
 
     registerMatrixAutoJoin({
       client,

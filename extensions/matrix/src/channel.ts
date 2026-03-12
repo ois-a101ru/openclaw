@@ -158,13 +158,19 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
         groupPolicy: account.config.groupPolicy,
         defaultGroupPolicy,
       });
-      if (groupPolicy !== "open") {
-        return [];
-      }
       const configPath = resolveMatrixConfigPath(cfg as CoreConfig, account.accountId);
-      return [
-        `- Matrix rooms: groupPolicy="open" allows any room to trigger (mention-gated). Set ${configPath}.groupPolicy="allowlist" + ${configPath}.groups (and optionally ${configPath}.groupAllowFrom) to restrict rooms.`,
-      ];
+      const warnings: string[] = [];
+      if (groupPolicy === "open") {
+        warnings.push(
+          `- Matrix rooms: groupPolicy="open" allows any room to trigger (mention-gated). Set ${configPath}.groupPolicy="allowlist" + ${configPath}.groups (and optionally ${configPath}.groupAllowFrom) to restrict rooms.`,
+        );
+      }
+      if ((account.config.autoJoin ?? "always") === "always") {
+        warnings.push(
+          `- Matrix invites: autoJoin="always" joins any invited room before message policy applies. Set ${configPath}.autoJoin="allowlist" + ${configPath}.autoJoinAllowlist (or ${configPath}.autoJoin="off") to restrict joins.`,
+        );
+      }
+      return warnings;
     },
   },
   groups: {
