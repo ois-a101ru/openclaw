@@ -393,6 +393,8 @@ export type AgentsFilesSetResult = {
   file: AgentFileEntry;
 };
 
+export type SessionRunStatus = "running" | "done" | "failed" | "killed";
+
 export type GatewaySessionRow = {
   key: string;
   kind: "direct" | "group" | "global" | "unknown";
@@ -413,6 +415,11 @@ export type GatewaySessionRow = {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
+  status?: SessionRunStatus;
+  startedAt?: number;
+  endedAt?: number;
+  runtimeMs?: number;
+  childSessions?: string[];
   model?: string;
   modelProvider?: string;
   contextTokens?: number;
