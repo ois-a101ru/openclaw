@@ -31,6 +31,7 @@ Docs: https://docs.openclaw.ai
 ### Breaking
 
 - Browser/Chrome MCP: remove the legacy Chrome extension relay path, bundled extension assets, `driver: "extension"`, and `browser.relayBindHost`. Run `openclaw doctor --fix` to migrate host-local browser config to `existing-session` / `user`; Docker, headless, sandbox, and remote browser flows still use raw CDP. Thanks @vincentkoc.
+- VK Teams: add channel plugin for VK Teams Bot API with long polling, default API base from official docs (myteam.mail.ru), text and file sending, allowlist, and pairing.
 
 ### Fixes
 

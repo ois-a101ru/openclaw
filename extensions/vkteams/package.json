@@ -1,0 +1,38 @@
+{
+  "name": "@openclaw/vkteams",
+  "version": "2026.3.11",
+  "private": true,
+  "description": "OpenClaw VK Teams channel plugin",
+  "type": "module",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.7"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "vkteams",
+      "label": "VK Teams",
+      "selectionLabel": "VK Teams (Bot API)",
+      "docsPath": "/channels/vkteams",
+      "docsLabel": "vkteams",
+      "blurb": "VK Teams Bot API; long polling. Default server from official docs (myteam.mail.ru).",
+      "aliases": ["vk-teams", "vkteams"],
+      "order": 85
+    },
+    "install": {
+      "npmSpec": "@openclaw/vkteams",
+      "localPath": "extensions/vkteams",
+      "defaultChoice": "npm"
+    }
+  }
+}
