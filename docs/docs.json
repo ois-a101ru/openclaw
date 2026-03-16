@@ -920,6 +920,7 @@
                   "channels/telegram",
                   "channels/tlon",
                   "channels/twitch",
+                  "channels/vkteams",
                   "channels/whatsapp",
                   "channels/zalo",
                   "channels/zalouser"
@@ -1326,6 +1327,7 @@
               {
                 "group": "Technical reference",
                 "pages": [
+                  "reference/vkteams-bot-api",
                   "reference/wizard",
                   "reference/token-use",
                   "reference/secretref-credential-surface",

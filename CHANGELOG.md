@@ -6,6 +6,8 @@ Docs: https://docs.openclaw.ai
 
 ### Changes
 
+- VK Teams: add channel plugin for VK Teams Bot API with long polling, default API base from official docs (myteam.mail.ru), text and file sending, allowlist, and pairing.
+
 ### Fixes
 
 ## 2026.3.11

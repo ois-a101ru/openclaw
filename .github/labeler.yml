@@ -89,6 +89,11 @@
       - any-glob-to-any-file:
           - "extensions/twitch/**"
           - "docs/channels/twitch.md"
+"channel: vkteams":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "extensions/vkteams/**"
+          - "docs/channels/vkteams.md"
 "channel: voice-call":
   - changed-files:
       - any-glob-to-any-file:

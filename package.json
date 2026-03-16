@@ -192,6 +192,10 @@
       "types": "./dist/plugin-sdk/twitch.d.ts",
       "default": "./dist/plugin-sdk/twitch.js"
     },
+    "./plugin-sdk/vkteams": {
+      "types": "./dist/plugin-sdk/vkteams.d.ts",
+      "default": "./dist/plugin-sdk/vkteams.js"
+    },
     "./plugin-sdk/voice-call": {
       "types": "./dist/plugin-sdk/voice-call.d.ts",
       "default": "./dist/plugin-sdk/voice-call.js"
